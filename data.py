@@ -1,3 +1,7 @@
+"""
+Data generation for database as per requirements (10 groups, 200 students, etc)
+
+"""
 import random
 import string
 
@@ -105,17 +109,12 @@ def assign_students_to_groups(students: tuple, groups: dict) -> dict:
     return groups
 
 
-def assign_courses_to_students(groups: dict, n_courses=10) -> dict:
-    """Return a dictionary with every student from par 'groups' dict as key.
-    Value is the list of their courses ids (0-3 courses for each student)"""
-    courses = {}
-    for student in groups:
-        courses[student] = random.sample(range(1, n_courses+1), random.randint(0, 3))
+def generate_student_courses(n_courses=10, n_students=200) -> list:
+    """Return a list of lists of course ids for each student.
+
+    Len = n_students, values = list of their courses ids (0-3 courses for each), course_id - from 1 to n_courses"""
+
+    courses = []
+    for _ in range(n_students):
+        courses.append(random.sample(range(1, n_courses + 1), random.randint(0, 3)))
     return courses
-
-
-
-groups = assign_students_to_groups(generate_students(200), generate_groups(10))
-
-
-print(assign_courses_to_students(groups))
