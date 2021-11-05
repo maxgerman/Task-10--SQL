@@ -1,6 +1,8 @@
 import os
 
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, insert, select, bindparam
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, insert, select, bindparam, \
+    func, desc, delete
+from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy_utils.functions import database_exists, create_database
 
 import src.data as data
@@ -34,7 +36,8 @@ course = Table('course', metadata_obj,
 student_course = Table('student_course', metadata_obj,
                        Column('id', Integer, primary_key=True),
                        Column('student', ForeignKey('student.id'), nullable=False),
-                       Column('course', ForeignKey('course.id'), nullable=False)
+                       Column('course', ForeignKey('course.id'), nullable=False),
+                       UniqueConstraint('student', 'course'),
                        )
 
 
@@ -75,3 +78,63 @@ def insert_initial_data():
         insert_student_courses = insert(student_course), create_params_for_student_course()
         conn.execute(*insert_student_courses)
         conn.commit()
+
+
+def find_groups_with_less_or_equal_students(n=20) -> list:
+    count = func.count('student.c.id').label('count')
+    s = select(group.c.name, count).join(student).group_by(group.c.name).order_by(desc('count')).having(count <= n)
+    with engine.connect() as conn:
+        res = conn.execute(s)
+    return res.all()
+
+
+def find_students_from_course(course_name) -> list:
+    """Returns a list of student names with a given course name (case insensitive and substring-searching)"""
+    s = select(student.c.first_name, student.c.last_name, course.c.name) \
+        .join(student_course, student.c.id == student_course.c.student) \
+        .join(course, student_course.c.course == course.c.id).where(course.c.name.ilike(f'%{course_name}%')).order_by(
+        course.c.name)
+    with engine.connect() as conn:
+        res = conn.execute(s)
+    return res.all()
+
+
+def add_student(first_name, last_name, group_id) -> tuple:
+    """Adds a student to the db and returns its id"""
+    if not all((isinstance(first_name, str), isinstance(last_name, str), isinstance(group_id, int))):
+        return ValueError
+    with engine.connect() as conn:
+        res = conn.execute(insert(student), {'first_name': first_name, 'last_name': last_name, 'group': group_id})
+        conn.commit()
+    return res.inserted_primary_key
+
+
+def delete_student(student_id):
+    with engine.connect() as conn:
+        res = conn.execute(delete(student).where(student.c.id == student_id))
+        conn.commit()
+    return res.rowcount
+
+
+def add_student_to_course(full_name, course_name):
+    """Add a student to the course given their full name and course name (case insensitive)"""
+    first_name, last_name = full_name.split()
+    student_id_subq = select(student.c.id) \
+        .where(student.c.first_name.ilike(first_name)) \
+        .where(student.c.last_name.ilike(last_name)).scalar_subquery()
+    course_subq = select(course.c.id).where(course.c.name.ilike(course_name)).scalar_subquery()
+    insert_stmt = insert(student_course).values(student=student_id_subq, course=course_subq)
+    with engine.connect() as conn:
+        res = conn.execute(insert_stmt)
+        conn.commit()
+    return res.inserted_primary_key
+
+
+def remove_student_from_course(student_id, course_id):
+    del_stmt = delete(student_course) \
+        .where(student_course.c.student == student_id) \
+        .where(student_course.c.course == course_id)
+    with engine.connect() as conn:
+        res = conn.execute(del_stmt)
+        conn.commit()
+    return res.rowcount
