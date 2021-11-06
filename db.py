@@ -80,7 +80,7 @@ def insert_initial_data():
         conn.commit()
 
 
-def find_groups_with_less_or_equal_students(n=20) -> list:
+def find_groups_with_fewer_or_equal_students(n=20) -> list:
     count = func.count('student.c.id').label('count')
     s = select(group.c.name, count).join(student).group_by(group.c.name).order_by(desc('count')).having(count <= n)
     with engine.connect() as conn:
@@ -138,3 +138,44 @@ def remove_student_from_course(student_id, course_id):
         res = conn.execute(del_stmt)
         conn.commit()
     return res.rowcount
+
+
+def get_all_students():
+    count = func.count('student_course.c.course').label('course_count')
+    stmt = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'), count)\
+        .join(group)\
+        .join(student_course, student.c.id == student_course.c.student)\
+        .group_by(student.c.id, group.c.name)\
+        .order_by(student.c.id)
+    with engine.connect() as conn:
+        res = conn.execute(stmt)
+    return res.mappings().all()
+
+
+def get_student(id):
+    sel_info = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'))\
+        .join(group)\
+        .join(student_course, student.c.id == student_course.c.student)\
+        .where(student.c.id == id)
+
+    sel_courses = select(course.c.name)\
+        .select_from(student)\
+        .join(student_course, student_course.c.student == student.c.id)\
+        .join(course, course.c.id == student_course.c.course)\
+        .where(student.c.id == id)
+
+    with engine.connect() as conn:
+        info = conn.execute(sel_info)
+        sel_courses = conn.execute(sel_courses)
+
+    info = info.first()._asdict()
+    info.update(
+        {'courses':
+             [course[0] for course in sel_courses.all()]
+        }
+    )
+    return info
+
+
+
+assert database_exists(URL)
