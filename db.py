@@ -89,20 +89,24 @@ def find_groups_with_fewer_or_equal_students(n=20) -> list:
 
 
 def find_students_from_course(course_name) -> list:
-    """Returns a list of student names with a given course name (case insensitive and substring-searching)"""
-    s = select(student.c.first_name, student.c.last_name, course.c.name) \
+    """Returns a list of dicts with student info from a given course name (case insensitive and substring-searching)"""
+    s = select(
+        student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'),
+        course.c.name.label('course')) \
         .join(student_course, student.c.id == student_course.c.student) \
-        .join(course, student_course.c.course == course.c.id).where(course.c.name.ilike(f'%{course_name}%')).order_by(
-        course.c.name)
+        .join(course, student_course.c.course == course.c.id)\
+        .join(group, group.c.id == student.c.group)\
+        .where(course.c.name.ilike(f'%{course_name}%'))\
+        .order_by(course.c.name)
     with engine.connect() as conn:
-        res = conn.execute(s)
-    return res.all()
+        rows = conn.execute(s)
+    return [r._asdict() for r in rows]
 
 
 def add_student(first_name, last_name, group_id) -> tuple:
     """Adds a student to the db and returns its id"""
     if not all((isinstance(first_name, str), isinstance(last_name, str), isinstance(group_id, int))):
-        return ValueError
+        raise ValueError
     with engine.connect() as conn:
         res = conn.execute(insert(student), {'first_name': first_name, 'last_name': last_name, 'group': group_id})
         conn.commit()
@@ -122,12 +126,12 @@ def add_student_to_course(full_name, course_name):
     student_id_subq = select(student.c.id) \
         .where(student.c.first_name.ilike(first_name)) \
         .where(student.c.last_name.ilike(last_name)).scalar_subquery()
-    course_subq = select(course.c.id).where(course.c.name.ilike(course_name)).scalar_subquery()
+    course_subq = select(course.c.id).where(course.c.name.ilike(f'%{course_name}%')).scalar_subquery()
     insert_stmt = insert(student_course).values(student=student_id_subq, course=course_subq)
     with engine.connect() as conn:
         res = conn.execute(insert_stmt)
         conn.commit()
-    return res.inserted_primary_key
+    return res.inserted_primary_key[0]
 
 
 def remove_student_from_course(student_id, course_id):
