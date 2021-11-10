@@ -1,7 +1,7 @@
 """
 Data generation for database as per requirements (10 groups, 200 students, etc)
-
 """
+
 import random
 import string
 
@@ -62,11 +62,10 @@ LAST_NAMES = [
     'Sweigart',
     'Rhinehart',
     'Dickens',
-
 ]
 
 
-def generate_groups(n=10) -> dict:
+def generate_groups(n: int = 10) -> dict:
     """Generate specified number of groups as a dict (keys - group names, values  - empty lists)"""
     groups = {}
     while len(groups) < n:
@@ -80,8 +79,11 @@ def generate_groups(n=10) -> dict:
     return groups
 
 
-def generate_students(n=200) -> list:
-    """... Avoid duplicate names"""
+def generate_students(n: int = 200) -> list:
+    """Generate a list of n unique students from FIRST_NAMES, LAST_NAMES.
+
+    Raises ValueError if n is more than there are possible unique combinations."""
+
     if n > len(FIRST_NAMES) * len(LAST_NAMES):
         raise ValueError
 
@@ -101,6 +103,7 @@ def assign_students_to_groups(students: list, groups: dict) -> dict:
     """Put students into groups giving priority to the least populated groups.
 
     Members limit is 10-30 students per group."""
+
     for student in students:
         least_populated_groups = sorted([name for name in groups], key=lambda name: len(groups[name]))
         weights = [30 - len(groups[name]) for name in least_populated_groups]
@@ -110,8 +113,8 @@ def assign_students_to_groups(students: list, groups: dict) -> dict:
     return groups
 
 
-def generate_student_courses(n_courses=10, n_students=200) -> list:
-    """Return a list of lists of course ids for each student.
+def generate_student_courses(n_courses: int = 10, n_students: int = 200) -> list:
+    """Return a list of lists per student of course ids.
 
     Len = n_students, values = list of their courses ids (0-3 courses for each), course_id - from 1 to n_courses"""
 

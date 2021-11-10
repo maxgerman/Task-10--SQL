@@ -1,3 +1,5 @@
+""" Tests for data generation """
+
 from src import data
 import re
 

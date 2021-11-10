@@ -1,3 +1,9 @@
+"""
+Main app module. Creates db if it doesn't exist.
+For database URL, role and password see db.py.
+Rebuilds database if -r (--rebuild) is passed in CLI.
+"""
+
 import argparse
 import os
 

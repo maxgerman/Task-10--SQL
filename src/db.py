@@ -1,4 +1,5 @@
-"""Interaction with database. Postgres must be up, ROLE created and granted privileges to create databases.
+"""
+Interaction with database. Postgres must be up, ROLE created and granted privileges to create databases.
 ROLE password (PSW) must be set (env variable).
 Another db will be used for tests (with prefix test_)
 """
@@ -57,7 +58,8 @@ def create_params_for_student_course() -> list:
     return [{'student': id[0], 'course': c} for id, courses in zip(student_ids, student_courses) for c in courses]
 
 
-def insert_initial_data():
+def insert_initial_data() -> None:
+    """Insert initial data to all db tables as per task requirements"""
     metadata_obj.drop_all(engine, checkfirst=True)
     metadata_obj.create_all(engine)
 
@@ -85,7 +87,8 @@ def insert_initial_data():
         conn.commit()
 
 
-def find_groups_with_fewer_or_equal_students(n=20) -> list:
+def find_groups_with_fewer_or_equal_students(n: int = 20) -> list:
+    """Return groups with fewer or equal than n students"""
     count = func.count('student.c.id').label('count')
     s = select(group.c.name, count).join(student).group_by(group.c.name).order_by(desc('count')).having(count <= n)
     with engine.connect() as conn:
@@ -93,7 +96,7 @@ def find_groups_with_fewer_or_equal_students(n=20) -> list:
     return res.all()
 
 
-def find_students_from_course(course_name) -> list:
+def find_students_from_course(course_name: str) -> list:
     """Returns a list of dicts with student info from a given course name (case insensitive and substring-searching)"""
     s = select(
         student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'),
@@ -108,7 +111,7 @@ def find_students_from_course(course_name) -> list:
     return [r._asdict() for r in rows]
 
 
-def add_student(first_name, last_name, group_id) -> tuple:
+def add_student(first_name: str, last_name: str, group_id: int) -> tuple:
     """Adds a student to the db and returns its id"""
     if not all((isinstance(first_name, str), isinstance(last_name, str), isinstance(group_id, int))):
         raise ValueError
@@ -118,15 +121,16 @@ def add_student(first_name, last_name, group_id) -> tuple:
     return res.inserted_primary_key
 
 
-def delete_student(student_id):
+def delete_student(student_id: int) -> int:
+    """Delete student with id from db"""
     with engine.connect() as conn:
         res = conn.execute(delete(student).where(student.c.id == student_id))
         conn.commit()
     return res.rowcount
 
 
-def add_student_to_course(full_name, course_name):
-    """Add a student to the course given their full name and course name (case insensitive)"""
+def add_student_to_course(full_name: str, course_name: str) -> int:
+    """Add a student to the course given their full name and course name (case insensitive)."""
     first_name, last_name = full_name.split()
     student_id_subq = select(student.c.id) \
         .where(student.c.first_name.ilike(first_name)) \
@@ -139,7 +143,8 @@ def add_student_to_course(full_name, course_name):
     return res.inserted_primary_key[0]
 
 
-def remove_student_from_course(student_id, course_id):
+def remove_student_from_course(student_id: int, course_id: int) -> int:
+    """Remove student by id from course by id. Returns positive rowcount if succeeds"""
     del_stmt = delete(student_course) \
         .where(student_course.c.student == student_id) \
         .where(student_course.c.course == course_id)
@@ -149,7 +154,8 @@ def remove_student_from_course(student_id, course_id):
     return res.rowcount
 
 
-def get_all_students():
+def get_all_students() -> list:
+    """Get all students as a list of rows"""
     count = func.count('student_course.c.course').label('course_count')
     stmt = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'), count) \
         .join(group) \
@@ -161,7 +167,8 @@ def get_all_students():
     return res.mappings().all()
 
 
-def get_student(id):
+def get_student(id: int) -> dict:
+    """Return student info dict by their id"""
     sel_info = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group')) \
         .join(group) \
         .join(student_course, student.c.id == student_course.c.student, isouter=True) \

@@ -1,3 +1,5 @@
+"""Tests for Flask restful APIs"""
+
 import json
 
 import pytest
@@ -9,6 +11,7 @@ from src.db import student_course
 
 
 def test_list_students(test_client):
+    """Test thats student list is returned"""
     r = test_client.get(API_PREFIX + 'students/')
     assert r.status_code == 200
     assert r.content_type == 'application/json'
@@ -17,6 +20,7 @@ def test_list_students(test_client):
 
 
 def test_get_student(test_client):
+    """Test that one student is returned by id"""
     r = test_client.get(API_PREFIX + 'student/1/')
     assert r.status_code == 200
     assert r.content_type == 'application/json'
@@ -25,6 +29,7 @@ def test_get_student(test_client):
 
 
 def test_delete_student(test_client):
+    """Test the deletion of student"""
     r = test_client.delete(API_PREFIX + 'student/199/')
     assert r.status_code == 200
     r = test_client.delete(API_PREFIX + 'student/199/')
@@ -32,6 +37,7 @@ def test_delete_student(test_client):
 
 
 def test_add_student(test_client):
+    """Test that student is added"""
     data = dict(first_name='First', last_name='Last', group_id=1)
     r = test_client.post(API_PREFIX + 'students/add/', data=data)
     assert r.status_code == 201
@@ -40,6 +46,8 @@ def test_add_student(test_client):
 
 
 def test_groups_le(test_client):
+    """Test that groups are found with fewer or equal students
+    Parametrized test for underlying function is done in test_db.py"""
     r = test_client.get(API_PREFIX + 'groups_LE/20/')
     groups_dic = json.loads(r.data)
     assert groups_dic['Groups']
@@ -49,6 +57,7 @@ def test_groups_le(test_client):
 
 @pytest.mark.parametrize('course_name', data.COURSES)
 def test_students_from_course(course_name, test_client):
+    """Test that students from specific course are found"""
     r = test_client.get(API_PREFIX + f'students/from_course/{course_name}/')
     students_dic = json.loads(r.data)
     assert students_dic['Students']
@@ -57,7 +66,9 @@ def test_students_from_course(course_name, test_client):
 
 
 def test_student_to_course(test_db, test_client):
-    # find name and an unattended course
+    """Test that student is added to the course"""
+
+    # find a name and an unattended course
     r = test_client.get(API_PREFIX + 'students/5/')
     student_dic = json.loads(r.data)
     first, last = student_dic['Student']['first_name'], student_dic['Student']['last_name']
@@ -67,11 +78,12 @@ def test_student_to_course(test_db, test_client):
             new_course = course
             break
 
-    # adding to new course course
+    # adding to new course
     params = {'student_name': f'{first} {last}', 'course_name': new_course}
     r = test_client.post(API_PREFIX + 'students/add_course/', data=params)
     assert r.status_code == 201
 
+    # checking his info again
     r = test_client.get(API_PREFIX + 'students/5/')
     student_dic = json.loads(r.data)
     courses = student_dic['Student']['courses']
@@ -79,6 +91,8 @@ def test_student_to_course(test_db, test_client):
 
 
 def test_student_remove_course(test_db, test_client):
+    """Test that student is removed from a course"""
+
     # finding student with a course
     with test_db.connect() as conn:
         student_with_course = conn.execute(

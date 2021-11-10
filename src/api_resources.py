@@ -1,3 +1,5 @@
+"""Flask restful API resources are defined here"""
+
 from flask_restful import Resource, marshal_with, fields, reqparse
 import sqlalchemy.exc
 
@@ -12,6 +14,7 @@ STUDENT_FIELDS = {
 
 
 class ListStudents(Resource):
+    """Lists students with info"""
     student_fields = STUDENT_FIELDS.copy()
     student_fields.update(
         {'course_count': fields.String(attribute='course_count')}
@@ -23,6 +26,7 @@ class ListStudents(Resource):
 
 
 class Student(Resource):
+    """Detailed info about one student. Also supports delete method for deletion"""
     student_fields = STUDENT_FIELDS.copy()
     student_fields.update(
         {'courses': fields.List(fields.String, attribute='courses')}
@@ -45,6 +49,8 @@ class Student(Resource):
 
 
 class AddStudent(Resource):
+    """Add student to db by post request with first_name, last_name, group_id"""
+
     def post(self):
         """Add student to db"""
         args = parser.parse_args()
@@ -56,6 +62,7 @@ class AddStudent(Resource):
 
 
 class GroupsWithFewerOrEqualStudents(Resource):
+    """Return groups with fewer or equal number of students"""
     group_fields = {
         'group_name': fields.String(attribute='name'),
         'student_count': fields.String(attribute='count'),
@@ -67,6 +74,7 @@ class GroupsWithFewerOrEqualStudents(Resource):
 
 
 class StudentsFromCourse(Resource):
+    """Return students from the specified course name (partly and case-insensitive)"""
     student_fields = STUDENT_FIELDS.copy()
     student_fields.update({
         'course match': fields.String(attribute='course'),
