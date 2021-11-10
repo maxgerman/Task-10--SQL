@@ -1,9 +1,13 @@
+"""Interaction with database. Postgres must be up, ROLE created and granted privileges to create databases.
+ROLE password (PSW) must be set (env variable).
+Another db will be used for tests (with prefix test_)
+"""
+
 import os
 
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, insert, select, bindparam, \
     func, desc, delete
 from sqlalchemy.schema import UniqueConstraint
-from sqlalchemy_utils.functions import database_exists, create_database
 
 import src.data as data
 
@@ -24,7 +28,7 @@ student = Table('student', metadata_obj,
                 Column('id', Integer, primary_key=True),
                 Column('first_name', String(255), nullable=False),
                 Column('last_name', String(255), nullable=False),
-                Column('group', ForeignKey('group.id'), nullable=False)
+                Column('group', ForeignKey('group.id'), nullable=False),
                 )
 
 course = Table('course', metadata_obj,
@@ -35,13 +39,13 @@ course = Table('course', metadata_obj,
 
 student_course = Table('student_course', metadata_obj,
                        Column('id', Integer, primary_key=True),
-                       Column('student', ForeignKey('student.id'), nullable=False),
-                       Column('course', ForeignKey('course.id'), nullable=False),
+                       Column('student', ForeignKey('student.id', ondelete='CASCADE'), nullable=False),
+                       Column('course', ForeignKey('course.id', ondelete='CASCADE'), nullable=False),
                        UniqueConstraint('student', 'course'),
                        )
 
 
-def create_params_for_student_course():
+def create_params_for_student_course() -> list:
     """Return params for student-course many-to-many relation for executemany insertion.
     Every student will have varying number of rows (courses)"""
 
@@ -75,6 +79,7 @@ def insert_initial_data():
         conn.execute(*insert_courses)
         conn.execute(*insert_students)
         conn.commit()
+
         insert_student_courses = insert(student_course), create_params_for_student_course()
         conn.execute(*insert_student_courses)
         conn.commit()
@@ -94,9 +99,9 @@ def find_students_from_course(course_name) -> list:
         student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'),
         course.c.name.label('course')) \
         .join(student_course, student.c.id == student_course.c.student) \
-        .join(course, student_course.c.course == course.c.id)\
-        .join(group, group.c.id == student.c.group)\
-        .where(course.c.name.ilike(f'%{course_name}%'))\
+        .join(course, student_course.c.course == course.c.id) \
+        .join(group, group.c.id == student.c.group) \
+        .where(course.c.name.ilike(f'%{course_name}%')) \
         .order_by(course.c.name)
     with engine.connect() as conn:
         rows = conn.execute(s)
@@ -146,10 +151,10 @@ def remove_student_from_course(student_id, course_id):
 
 def get_all_students():
     count = func.count('student_course.c.course').label('course_count')
-    stmt = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'), count)\
-        .join(group)\
-        .join(student_course, student.c.id == student_course.c.student)\
-        .group_by(student.c.id, group.c.name)\
+    stmt = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'), count) \
+        .join(group) \
+        .join(student_course, student_course.c.student == student.c.id, isouter=True) \
+        .group_by(student.c.id, group.c.name) \
         .order_by(student.c.id)
     with engine.connect() as conn:
         res = conn.execute(stmt)
@@ -157,15 +162,15 @@ def get_all_students():
 
 
 def get_student(id):
-    sel_info = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group'))\
-        .join(group)\
-        .join(student_course, student.c.id == student_course.c.student)\
+    sel_info = select(student.c.id, student.c.first_name, student.c.last_name, group.c.name.label('group')) \
+        .join(group) \
+        .join(student_course, student.c.id == student_course.c.student, isouter=True) \
         .where(student.c.id == id)
 
-    sel_courses = select(course.c.name)\
-        .select_from(student)\
-        .join(student_course, student_course.c.student == student.c.id)\
-        .join(course, course.c.id == student_course.c.course)\
+    sel_courses = select(course.c.name) \
+        .select_from(student) \
+        .join(student_course, student_course.c.student == student.c.id) \
+        .join(course, course.c.id == student_course.c.course) \
         .where(student.c.id == id)
 
     with engine.connect() as conn:
@@ -176,10 +181,6 @@ def get_student(id):
     info.update(
         {'courses':
              [course[0] for course in sel_courses.all()]
-        }
+         }
     )
     return info
-
-
-
-assert database_exists(URL)

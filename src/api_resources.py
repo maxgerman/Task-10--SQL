@@ -4,17 +4,17 @@ import sqlalchemy.exc
 import src.db as db
 
 STUDENT_FIELDS = {
-    'id': fields.String(attribute=lambda dic: dic['id']),
-    'first_name': fields.String(attribute=lambda dic: dic['first_name']),
-    'last_name': fields.String(attribute=lambda dic: dic['last_name']),
-    'group': fields.String(attribute=lambda dic: dic['group']),
+    'id': fields.String(attribute='id'),
+    'first_name': fields.String(attribute='first_name'),
+    'last_name': fields.String(attribute='last_name'),
+    'group': fields.String(attribute='group'),
 }
 
 
 class ListStudents(Resource):
     student_fields = STUDENT_FIELDS.copy()
     student_fields.update(
-        {'course_count': fields.String(attribute=lambda dic: dic['course_count'], default='wtf')}
+        {'course_count': fields.String(attribute='course_count')}
     )
 
     @marshal_with(student_fields, envelope='Students')
@@ -25,7 +25,7 @@ class ListStudents(Resource):
 class Student(Resource):
     student_fields = STUDENT_FIELDS.copy()
     student_fields.update(
-        {'courses': fields.List(fields.String, attribute=lambda dic: dic['courses'], default='wtf')}
+        {'courses': fields.List(fields.String, attribute='courses')}
     )
 
     @marshal_with(student_fields, envelope='Student')
@@ -41,7 +41,7 @@ class Student(Resource):
         if res:
             return {'deleted student with id': student_id}, 200
         else:
-            return {'error 404': 'not found'}, 404
+            return {'error 404': f'not found student with id {student_id}'}, 404
 
 
 class AddStudent(Resource):
@@ -50,18 +50,18 @@ class AddStudent(Resource):
         args = parser.parse_args()
         try:
             res = db.add_student(args['first_name'], args['last_name'], int(args['group_id']))
-        except sqlalchemy.exc.SQLAlchemyError:
+        except (sqlalchemy.exc.SQLAlchemyError, TypeError):
             return {'error 400': 'bad request'}, 400
         return {'student created with id': res[0]}, 201
 
 
 class GroupsWithFewerOrEqualStudents(Resource):
     group_fields = {
-        'group_name': fields.String(attribute=lambda tup: tup[0]),
-        'student_count': fields.String(attribute=lambda tup: tup[1]),
+        'group_name': fields.String(attribute='name'),
+        'student_count': fields.String(attribute='count'),
     }
 
-    @marshal_with(group_fields, envelope='Group')
+    @marshal_with(group_fields, envelope='Groups')
     def get(self, n=20):
         return db.find_groups_with_fewer_or_equal_students(n)
 

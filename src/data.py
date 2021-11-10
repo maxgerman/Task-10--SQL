@@ -67,19 +67,20 @@ LAST_NAMES = [
 
 
 def generate_groups(n=10) -> dict:
+    """Generate specified number of groups as a dict (keys - group names, values  - empty lists)"""
     groups = {}
     while len(groups) < n:
         group_name = (random.choice(string.ascii_letters).upper() +
                       random.choice(string.ascii_letters).upper() +
                       '-' +
-                      str(random.randint(9, 99))
+                      str(random.randint(10, 99))
                       )
         if group_name not in groups:
             groups[group_name] = []
     return groups
 
 
-def generate_students(n=200) -> tuple:
+def generate_students(n=200) -> list:
     """... Avoid duplicate names"""
     if n > len(FIRST_NAMES) * len(LAST_NAMES):
         raise ValueError
@@ -96,7 +97,7 @@ def generate_students(n=200) -> tuple:
                 return students
 
 
-def assign_students_to_groups(students: tuple, groups: dict) -> dict:
+def assign_students_to_groups(students: list, groups: dict) -> dict:
     """Put students into groups giving priority to the least populated groups.
 
     Members limit is 10-30 students per group."""
