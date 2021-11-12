@@ -6,8 +6,21 @@ Another db will be used for tests (with prefix test_)
 
 import os
 
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, insert, select, bindparam, \
-    func, desc, delete
+from sqlalchemy import (
+    create_engine,
+    MetaData,
+    Table,
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    insert,
+    select,
+    bindparam,
+    func,
+    desc,
+    delete
+)
 from sqlalchemy.schema import UniqueConstraint
 
 import src.data as data

@@ -11,8 +11,15 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_restful import Api
 from sqlalchemy_utils.functions import database_exists, create_database, get_tables
 
-from src.api_resources import ListStudents, Student, AddStudent, GroupsWithFewerOrEqualStudents, StudentsFromCourse, \
-    StudentToCourse, StudentRemoveCourse
+from src.api_resources import (
+    ListStudents,
+    Student,
+    AddStudent,
+    GroupsWithFewerOrEqualStudents,
+    StudentsFromCourse,
+    StudentToCourse,
+    StudentRemoveCourse
+)
 from src import db
 
 API_PREFIX = '/api/v1/'
